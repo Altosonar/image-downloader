@@ -66,7 +66,7 @@ async function generateIcons({ inputSvg, outputDirectory, prefix, sizes }) {
         .toFile(outputPath);
       console.log(`Generated ${outputPath}`);
 
-      icons[`${size}`] = `/${outputDirectory}/${prefix}${size}.png`;
+      icons[`${size}`] = `${outputDirectory}/${prefix}${size}.png`;
     }
 
     return icons;
