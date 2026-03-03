@@ -210,6 +210,52 @@ a:active {
   color: var(--accent-dark);
 }
 
+/* image titles */
+.image_title_container {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
+  padding: 8px;
+  color: white;
+  font-size: 11px;
+  line-height: 1.2;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+.card:hover .image_title_container {
+  opacity: 1;
+}
+
+.image_title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.card .image_title_container .image_title {
+  font-weight: 500;
+}
+
+/* Enhanced card styling for better title display */
+.card {
+  position: relative;
+  overflow: hidden;
+}
+
+.card img {
+  transition: transform 0.2s ease;
+}
+
+.card:hover img {
+  transform: scale(1.02);
+}
+
 hr {
   border: 1px dotted var(--neutral);
   border-bottom: none;

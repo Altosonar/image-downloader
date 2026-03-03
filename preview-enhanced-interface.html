@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Image Downloader - Preview</title>
+    <style>
+        :root {
+            /* Colors */
+            --neutral-lightest: hsl(0, 0%, 100%);
+            --neutral-lighter: hsl(0, 0%, 95%);
+            --neutral-light: hsl(300, 11%, 80%);
+            --neutral: hsl(300, 11%, 60%);
+            --neutral-dark: hsl(300, 11%, 10%);
+            --neutral-darker: hsl(300, 11%, 5%);
+            --neutral-darkest: hsl(300, 11%, 0%);
+
+            --neutral-transparent-5: hsla(0, 0%, 0%, 5%);
+            --neutral-transparent-15: hsla(0, 0%, 0%, 15%);
+            --neutral-transparent-20: hsla(0, 0%, 0%, 20%);
+
+            --accent: hsl(213, 80%, 50%);
+            --accent-dark: hsl(213, 80%, 40%);
+
+            --foreground: hsl(0, 0%, 20%);
+            --foreground-light: hsl(0, 0%, 70%);
+            --foreground-inverse: hsl(0, 0%, 100%);
+
+            --border-radius-md: 4px;
+            --transition-all: all 200ms cubic-bezier(0.25, 0.8, 0.25, 1);
+            --images-container-gap: 8px;
+            --images-container-padding: 12px;
+            --input-background: var(--neutral-transparent-5);
+            --image-background: var(--neutral-light);
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: var(--accent);
+            color: white;
+            padding: 15px 20px;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .filters-container {
+            padding: 15px;
+            border-bottom: 1px solid var(--neutral-transparent-20);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .filter-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            min-width: 200px;
+            border-radius: var(--border-radius-md);
+            border: 0;
+            background: var(--input-background);
+            padding: 8px 12px;
+            font-size: 12px;
+            outline: none;
+            transition: var(--transition-all);
+        }
+
+        input[type="text"]:focus {
+            background: white;
+            box-shadow: 0 0 0 2px var(--accent);
+        }
+
+        .button {
+            background: var(--neutral-transparent-20);
+            border: 2px solid var(--neutral-transparent-20);
+            color: var(--foreground);
+            padding: 8px 12px;
+            border-radius: var(--border-radius-md);
+            cursor: pointer;
+            font-size: 12px;
+            transition: var(--transition-all);
+        }
+
+        .button:hover {
+            background: var(--neutral-light);
+            border-color: var(--neutral-light);
+        }
+
+        .images-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--images-container-gap);
+            padding: var(--images-container-padding);
+            min-height: 400px;
+        }
+
+        .select-all-checkbox {
+            padding: 10px 15px;
+            border-bottom: 1px solid var(--neutral-transparent-20);
+            font-size: 12px;
+            color: var(--foreground-light);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card {
+            position: relative;
+            border-radius: var(--border-radius-md);
+            overflow: hidden;
+            border: 1px solid var(--neutral-transparent-20);
+            transition: var(--transition-all);
+            cursor: pointer;
+            background: var(--image-background);
+        }
+
+        .card:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .card.checked {
+            border-color: var(--accent);
+            box-shadow: inset 0 0 0 2px var(--accent);
+        }
+
+        .card img {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+            transition: var(--transition-all);
+        }
+
+        .card:hover img {
+            transform: scale(1.05);
+        }
+
+        .checkbox {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            width: 18px;
+            height: 18px;
+            border: 2px solid white;
+            border-radius: 3px;
+            background: rgba(0,0,0,0.5);
+            display: none;
+        }
+
+        .card.checked .checkbox {
+            display: block;
+            background: var(--success-light);
+        }
+
+        .card.checked .checkbox::after {
+            content: '✓';
+            position: absolute;
+            top: -2px;
+            left: 2px;
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        /* Enhanced image title functionality */
+        .image_title_container {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
+            padding: 8px;
+            color: white;
+            font-size: 11px;
+            line-height: 1.2;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            pointer-events: none;
+        }
+
+        .card:hover .image_title_container {
+            opacity: 1;
+        }
+
+        .image_title {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+            font-weight: 500;
+        }
+
+        .actions {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            display: flex;
+            gap: 4px;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .card:hover .actions {
+            opacity: 1;
+        }
+
+        .action-button {
+            background: rgba(0,0,0,0.7);
+            border: none;
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition-all);
+        }
+
+        .action-button:hover {
+            background: var(--accent);
+            transform: scale(1.1);
+        }
+
+        .downloads-container {
+            padding: 15px;
+            border-top: 1px solid var(--neutral-transparent-20);
+            display: grid;
+            grid-template-columns: 1fr 1fr 80px;
+            gap: 10px;
+        }
+
+        .download-button {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: var(--border-radius-md);
+            cursor: pointer;
+            font-weight: bold;
+            transition: var(--transition-all);
+        }
+
+        .download-button:hover {
+            background: var(--accent-dark);
+        }
+
+        .download-button:disabled {
+            background: var(--neutral-light);
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .feature-highlight {
+            background: #e8f4fd;
+            border: 1px solid #b3d9ff;
+            border-radius: 4px;
+            padding: 10px;
+            margin: 10px;
+            font-size: 12px;
+            color: #0066cc;
+        }
+
+        .smart-title-badge {
+            display: inline-block;
+            background: #28a745;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 10px;
+            margin-left: 5px;
+        }
+
+        @media (max-width: 768px) {
+            .images-container {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 480px) {
+            .images-container {
+                grid-template-columns: 1fr;
+            }
+            .downloads-container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            Enhanced Image Downloader
+            <span class="smart-title-badge">SMART TITLES ACTIVE</span>
+        </div>
+        
+        <div class="feature-highlight">
+            🧠 <strong>Smart Title Capture:</strong> Automatically extracts meaningful titles from image alt text, title attributes, and surrounding context!
+        </div>
+
+        <div class="filters-container">
+            <div class="filter-row">
+                <input type="text" placeholder="Filter by URL">
+                <select>
+                    <option>Normal</option>
+                    <option>Wildcard</option>
+                    <option>Regex</option>
+                </select>
+                <button class="button">Advanced Filters</button>
+                <button class="button">Options</button>
+            </div>
+        </div>
+
+        <div class="select-all-checkbox">
+            <input type="checkbox" checked>
+            Select all (6 / 6)
+        </div>
+
+        <div class="images-container">
+            <!-- Image Card 1 - Alt Text Priority -->
+            <div class="card checked">
+                <img src="https://images.unsplash.com/photo-1506744038136-46273834b3fb" alt="Beautiful mountain landscape with trees and lake">
+                <div class="checkbox"></div>
+                <div class="image_title_container">
+                    <div class="image_title">Beautiful mountain landscape with trees and lake</div>
+                </div>
+                <div class="actions">
+                    <button class="action-button">👁️</button>
+                    <button class="action-button">⬇️</button>
+                </div>
+            </div>
+
+            <!-- Image Card 2 - Title Attribute Priority -->
+            <div class="card">
+                <img src="https://images.unsplash.com/photo-1516542076529-1ea38448605f">
+                <div class="checkbox"></div>
+                <div class="image_title_container">
+                    <div class="image_title">Ocean Waves</div>
+                </div>
+                <div class="actions">
+                    <button class="action-button">👁️</button>
+                    <button class="action-button">⬇️</button>
+                </div>
+            </div>
+
+            <!-- Image Card 3 - Context Priority -->
+            <div class="card">
+                <img src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e">
+                <div class="checkbox"></div>
+                <div class="image_title_container">
+                    <div class="image_title">Here's a beautiful sunset over the mountains</div>
+                </div>
+                <div class="actions">
+                    <button class="action-button">👁️</button>
+                    <button class="action-button">⬇️</button>
+                </div>
+            </div>
+
+            <!-- Image Card 4 - Filename Fallback -->
+            <div class="card">
+                <img src="https://images.unsplash.com/photo-1519681393784-d120267933ba">
+                <div class="checkbox"></div>
+                <div class="image_title_container">
+                    <div class="image_title">photo-1519681393784-d120267933ba.jpg</div>
+                </div>
+                <div class="actions">
+                    <button class="action-button">👁️</button>
+                    <button class="action-button">⬇️</button>
+                </div>
+            </div>
+
+            <!-- Image Card 5 - Linked Image -->
+            <div class="card">
+                <img src="https://images.unsplash.com/photo-1506260408121-e353d10b87c7" alt="Modern city skyline at sunset">
+                <div class="checkbox"></div>
+                <div class="image_title_container">
+                    <div class="image_title">Modern city skyline at sunset</div>
+                </div>
+                <div class="actions">
+                    <button class="action-button">👁️</button>
+                    <button class="action-button">⬇️</button>
+                </div>
+            </div>
+
+            <!-- Image Card 6 - Background Image Context -->
+            <div class="card">
+                <img src="https://images.unsplash.com/photo-1518135714420-2ced767989ac">
+                <div class="checkbox"></div>
+                <div class="image_title_container">
+                    <div class="image_title">This div has a background image with context</div>
+                </div>
+                <div class="actions">
+                    <button class="action-button">👁️</button>
+                    <button class="action-button">⬇️</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="downloads-container">
+            <input type="text" placeholder="Save to subfolder">
+            <input type="text" placeholder="Rename files">
+            <button class="download-button">
+                Download Selected (6 files)
+            </button>
+        </div>
+    </div>
+
+    <div style="margin-top: 20px; padding: 20px; background: white; border-radius: 8px; border: 1px solid var(--neutral-transparent-20);">
+        <h3>🎯 Smart Title Examples:</h3>
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
+            <div>
+                <strong>Alt Text Priority:</strong><br>
+                <span style="color: #666;">"Beautiful mountain landscape with trees and lake"</span>
+            </div>
+            <div>
+                <strong>Title Attribute:</strong><br>
+                <span style="color: #666;">"Ocean Waves"</span>
+            </div>
+            <div>
+                <strong>Context Extraction:</strong><br>
+                <span style="color: #666;">"Here's a beautiful sunset over the mountains"</span>
+            </div>
+        </div>
+        
+        <div style="margin-top: 15px; padding: 15px; background: #f8f9fa; border-radius: 4px;">
+            <h4>📁 Smart Naming Preview:</h4>
+            <p>When downloading, files will be named using the extracted smart titles:</p>
+            <ul>
+                <li>Beautiful mountain landscape with trees and lake.jpg</li>
+                <li>Ocean Waves.jpg</li>
+                <li>Here's a beautiful sunset over the mountains.jpg</li>
+                <li>photo-1519681393784-d120267933ba.jpg</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Interactive demo functionality
+        document.querySelectorAll('.card').forEach(card => {
+            card.addEventListener('click', () => {
+                card.classList.toggle('checked');
+                const checkbox = card.querySelector('.checkbox');
+                if (card.classList.contains('checked')) {
+                    checkbox.style.display = 'block';
+                } else {
+                    checkbox.style.display = 'none';
+                }
+            });
+        });
+
+        // Update selection count
+        function updateSelectionCount() {
+            const total = document.querySelectorAll('.card').length;
+            const selected = document.querySelectorAll('.card.checked').length;
+            document.querySelector('.select-all-checkbox').innerHTML = 
+                `<input type="checkbox" ${selected === total ? 'checked' : ''}>
+                 Select all (${selected} / ${total})`;
+        }
+
+        document.querySelectorAll('.card').forEach(card => {
+            card.addEventListener('click', updateSelectionCount);
+        });
+
+        // Select all functionality
+        document.querySelector('.select-all-checkbox input').addEventListener('change', (e) => {
+            const isChecked = e.target.checked;
+            document.querySelectorAll('.card').forEach(card => {
+                if (isChecked) {
+                    card.classList.add('checked');
+                    card.querySelector('.checkbox').style.display = 'block';
+                } else {
+                    card.classList.remove('checked');
+                    card.querySelector('.checkbox').style.display = 'none';
+                }
+            });
+            updateSelectionCount();
+        });
+    </script>
+</body>
+</html>

@@ -8,7 +8,7 @@ chrome.runtime.onInstalled.addListener((details) => {
 });
 
 // Download images
-/** @typedef {{ numberOfProcessedImages: number, imagesToDownload: string[], options: any, next: () => void }} Task */
+/** @typedef {{ numberOfProcessedImages: number, imagesToDownload: string[], options: any, smartImages: any[], next: () => void }} Task */
 
 /** @type {Set<Task>} */
 const tasks = new Set();
@@ -30,6 +30,7 @@ function startDownload(
     numberOfProcessedImages: 0,
     imagesToDownload: message.imagesToDownload,
     options: message.options,
+    smartImages: message.smartImages || [],
     next() {
       this.numberOfProcessedImages += 1;
       if (this.numberOfProcessedImages === this.imagesToDownload.length) {
@@ -44,8 +45,8 @@ function startDownload(
 async function downloadImages(/** @type {Task} */ task) {
   tasks.add(task);
   for (const image of task.imagesToDownload) {
-    await new Promise((resolve) => {
-      chrome.downloads.download({ url: image }, (downloadId) => {
+    await new Promise((/** @type {(value?: any) => void} */ resolve) => {
+      chrome.downloads.download({ url: image }, (/** @type {number | undefined} */ downloadId) => {
         if (downloadId == null) {
           if (chrome.runtime.lastError) {
             console.error(`${image}:`, chrome.runtime.lastError.message);
@@ -71,7 +72,27 @@ function suggestNewFilename(item, suggest) {
   if (task.options.folder_name) {
     newFilename += `${task.options.folder_name}/`;
   }
-  if (task.options.new_file_name) {
+
+  // Find the smart metadata for this image
+  const currentImageUrl = item.url;
+  const smartImage = task.smartImages.find(img => img.url === currentImageUrl);
+  
+  if (task.options.smart_naming && task.options.new_file_name && smartImage && smartImage.smartTitle) {
+    // Use smart title for naming
+    const smartTitle = smartImage.smartTitle;
+    const regex = /(?:\.([^.]+))?$/;
+    const extension = regex.exec(item.filename)?.[1];
+    
+    // Clean the smart title for filename
+    const cleanTitle = smartTitle
+      .replace(/[<>:"/\\|?*]/g, '') // Remove invalid filename characters
+      .replace(/\s+/g, ' ') // Normalize whitespace
+      .trim()
+      .substring(0, 100); // Limit length
+    
+    newFilename += `${cleanTitle}.${extension}`;
+  } else if (task.options.new_file_name) {
+    // Use numbered naming if no smart title available
     const regex = /(?:\.([^.]+))?$/;
     const extension = regex.exec(item.filename)?.[1];
     const numberOfDigits = task.imagesToDownload.length.toString().length;
@@ -88,6 +109,6 @@ function suggestNewFilename(item, suggest) {
   task.next();
 }
 
-function normalizeSlashes(filename) {
+function normalizeSlashes(/** @type {string} */ filename) {
   return filename.replace(/\\/g, '/').replace(/\/{2,}/g, '/');
 }

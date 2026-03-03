@@ -28,6 +28,7 @@ const Popup = () => {
 
   const [allImages, setAllImages] = useState([]);
   const [linkedImages, setLinkedImages] = useState([]);
+  const [smartImages, setSmartImages] = useState([]);
   const [selectedImages, setSelectedImages] = useState([]);
   const [visibleImages, setVisibleImages] = useState([]);
   useEffect(() => {
@@ -55,6 +56,21 @@ const Popup = () => {
                   ...messages.flatMap((message) => message?.result?.linkedImages),
                 ]),
               );
+
+              // Set smart images metadata
+              const newSmartImages = messages.flatMap((message) => message?.result?.smartImages || []);
+              setSmartImages((existingSmartImages) => {
+                const combined = [...existingSmartImages, ...newSmartImages];
+                // Remove duplicates based on URL
+                const seenUrls = new Set();
+                return combined.filter(image => {
+                  if (seenUrls.has(image.url)) {
+                    return false;
+                  }
+                  seenUrls.add(image.url);
+                  return true;
+                });
+              });
 
               localStorage.active_tab_origin = messages[0]?.result?.origin;
             });
@@ -151,7 +167,7 @@ const Popup = () => {
 
   async function downloadImages() {
     setDownloadIsInProgress(true);
-    await actions.downloadImages(imagesToDownload, options);
+    await actions.downloadImages(imagesToDownload, options, smartImages);
     setDownloadIsInProgress(false);
   }
 
@@ -365,9 +381,164 @@ function findImages() {
     return !!value;
   }
 
+  // Enhanced function to extract smart image metadata
+  function extractSmartImageMetadata() {
+    const images = [];
+    
+    // Find all img elements
+    document.querySelectorAll('img').forEach(img => {
+      const src = img.src;
+      if (src && isImageURL(src)) {
+        const metadata = {
+          url: relativeUrlToAbsolute(src),
+          alt: img.alt || '',
+          title: img.title || '',
+          filename: extractFilenameFromURL(src),
+          smartTitle: generateSmartTitle(img),
+          source: 'img',
+          naturalWidth: 0, // Will be populated later
+          naturalHeight: 0 // Will be populated later
+        };
+        images.push(metadata);
+      }
+    });
+
+    // Find linked images
+    document.querySelectorAll('a').forEach(link => {
+      const href = link.href;
+      if (href && isImageURL(href)) {
+        const metadata = {
+          url: relativeUrlToAbsolute(href),
+          alt: '',
+          title: link.title || '',
+          filename: extractFilenameFromURL(href),
+          smartTitle: generateSmartTitleFromLink(link),
+          source: 'link',
+          naturalWidth: 0,
+          naturalHeight: 0
+        };
+        images.push(metadata);
+      }
+    });
+
+    // Find background images
+    document.querySelectorAll('[style*="background-image"]').forEach(element => {
+      const backgroundImage = window.getComputedStyle(element).backgroundImage;
+      if (backgroundImage) {
+        const parsedURL = extractURLFromStyle(backgroundImage);
+        if (parsedURL && isImageURL(parsedURL)) {
+          const metadata = {
+            url: relativeUrlToAbsolute(parsedURL),
+            alt: '',
+            title: element.title || '',
+            filename: extractFilenameFromURL(parsedURL),
+            smartTitle: generateSmartTitleFromElement(element),
+            source: 'background',
+            naturalWidth: 0,
+            naturalHeight: 0
+          };
+          images.push(metadata);
+        }
+      }
+    });
+
+    // Remove duplicates based on URL
+    const uniqueImages = [];
+    const seenUrls = new Set();
+    
+    images.forEach(image => {
+      if (!seenUrls.has(image.url)) {
+        seenUrls.add(image.url);
+        uniqueImages.push(image);
+      }
+    });
+
+    return uniqueImages;
+  }
+
+  function extractFilenameFromURL(url) {
+    const urlObj = new URL(url);
+    const pathname = urlObj.pathname;
+    return pathname.split('/').pop() || 'image';
+  }
+
+  function generateSmartTitle(element) {
+    let title = '';
+    
+    // Priority 1: alt attribute
+    if (element.alt && element.alt.trim()) {
+      title = element.alt.trim();
+    }
+    // Priority 2: title attribute
+    else if (element.title && element.title.trim()) {
+      title = element.title.trim();
+    }
+    // Priority 3: surrounding text context
+    else {
+      title = extractContextFromElement(element);
+    }
+    
+    return title || extractFilenameFromURL(element.src || '');
+  }
+
+  function generateSmartTitleFromLink(link) {
+    let title = '';
+    
+    // Priority 1: link title
+    if (link.title && link.title.trim()) {
+      title = link.title.trim();
+    }
+    // Priority 2: link text
+    else if (link.textContent && link.textContent.trim()) {
+      title = link.textContent.trim();
+    }
+    // Priority 3: parent context
+    else {
+      title = extractContextFromElement(link);
+    }
+    
+    return title || extractFilenameFromURL(link.href || '');
+  }
+
+  function generateSmartTitleFromElement(element) {
+    let title = '';
+    
+    // Priority 1: title attribute
+    if (element.title && element.title.trim()) {
+      title = element.title.trim();
+    }
+    // Priority 2: surrounding text context
+    else {
+      title = extractContextFromElement(element);
+    }
+    
+    return title;
+  }
+
+  function extractContextFromElement(element) {
+    // Look for nearby text content
+    const parent = element.parentElement;
+    if (parent) {
+      // Get text from parent and siblings
+      const textContent = parent.textContent || '';
+      const trimmedText = textContent.trim();
+      
+      if (trimmedText.length > 0) {
+        // Take first meaningful sentence or phrase
+        const sentences = trimmedText.split(/[.!?]/).map(s => s.trim()).filter(s => s.length > 0);
+        if (sentences.length > 0) {
+          return sentences[0].substring(0, 100); // Limit to 100 chars
+        }
+      }
+    }
+    
+    return '';
+  }
+
   return {
     allImages: extractImagesFromSelector('img, image, a, [class], [style]'),
     linkedImages: extractImagesFromSelector('a'),
+    smartImages: extractSmartImageMetadata(),
     origin: window.location.origin,
   };
 }

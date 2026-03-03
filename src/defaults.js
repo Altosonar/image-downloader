@@ -4,6 +4,7 @@ const defaults = {
   // Filters
   folder_name: '',
   new_file_name: '',
+  smart_naming: true,
   filter_url: '',
   filter_url_mode: 'normal',
   filter_min_width: 0,
@@ -22,6 +23,7 @@ const defaults = {
   show_file_renaming: true,
   // Images
   show_image_url: true,
+  show_image_titles: true,
   show_open_image_button: true,
   show_download_image_button: true,
   columns: 2,

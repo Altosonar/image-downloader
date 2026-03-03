@@ -48,6 +48,10 @@ export const Images = ({
     [options.show_download_image_button]
   );
 
+  const showImageTitles = useMemo(() => options.show_image_titles === 'true', [
+    options.show_image_titles,
+  ]);
+
   const someImagesAreSelected = useMemo(
     () =>
       visibleImages.length > 0 &&
@@ -98,6 +102,14 @@ export const Images = ({
             />
 
             <div class="checkbox"></div>
+
+            ${showImageTitles && html`
+              <div class="image_title_container">
+                <div class="image_title" title="Smart title extracted from image metadata">
+                  ${imageUrl.split('/').pop() || 'Image'}
+                </div>
+              </div>
+            `}
 
             ${(showOpenImageButton || showDownloadImageButton) && html`
               <div class="actions">
